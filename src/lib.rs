@@ -267,12 +267,12 @@ impl VRChatOSC {
         service_name: &str,
         parameters: OscRootNode,
         handler: F,
-        handler_handler: impl FnMut(<F as network_handler::ArbitraryHandler<&[u8]>>::Output, &mut F) -> HF + Send + 'static,
+        handler_handler: impl FnMut(<F as network_handler::ArbitraryHandler<&[u8], SocketAddr>>::Output, &mut F, SocketAddr) -> HF + Send + 'static,
         check_handler: impl FnMut(F::CheckOutput, &'_ mut F) -> CF + Send + 'static,
         check_interval: core::time::Duration,
     ) -> Result<(), Error>
     where
-        F: for<'z> network_handler::ArbitraryHandler<&'z [u8]> + network_handler::PeriodicParsingCheck + Send + 'static,
+        F: for<'z> network_handler::ArbitraryHandler<&'z [u8], SocketAddr> + network_handler::PeriodicParsingCheck + Send + 'static,
         HF: core::future::Future<Output = ()> + Send,
         CF: core::future::Future<Output = ()> + Send,
     {
@@ -298,9 +298,9 @@ impl VRChatOSC {
                     recv = socket.recv_from(&mut buf) => {
                 // Wait to receive data on the socket.
                 match recv {
-                    Ok((len, _)) => {
+                    Ok((len, addr)) => {
                         let buf = &buf[..len];
-                        handler_handler(handler.handle(buf), &mut handler).await;
+                        handler_handler(handler.handle(buf, addr), &mut handler, addr).await;
                     }
                     Err(e) => {
                         if e.kind() == std::io::ErrorKind::ConnectionReset

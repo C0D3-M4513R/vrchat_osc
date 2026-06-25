@@ -83,12 +83,12 @@ async fn main() -> Result<(), Error> {
             ()
         }
     }
-    impl<'a> network_handler::ArbitraryHandler<&'a [&'a OscMessage]> for LoggingOscHandler {
+    impl<'a> network_handler::ArbitraryHandler<&'a [&'a OscMessage], core::net::SocketAddr> for LoggingOscHandler {
         type Output = ();
 
-        fn handle(&mut self, message: &'a [&'a OscMessage]) -> Self::Output {
+        fn handle(&mut self, message: &'a [&'a OscMessage], extra_info: core::net::SocketAddr) -> Self::Output {
             for msg in message {
-                log::info!("Received OSC message: {msg:?}");
+                log::info!("Received OSC message: {msg:?} from {extra_info}");
             }
         }
     }

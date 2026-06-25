@@ -27,7 +27,8 @@ wildmatch = "2.4.0"
 socket2 = "0.6"
 if-addrs = "0.15"
 
-network-handler = {version = "0.1.4", registry = "forgejo-code-rust", features = ["tokio"]}
+
+network-handler = {version = "0.2.0", registry = "forgejo-code-rust", features = ["tokio"]}
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
