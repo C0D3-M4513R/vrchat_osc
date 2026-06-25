@@ -1,0 +1,2 @@
+[registries.forgejo-code-rust]
+index = "sparse+https://gitea.c0d3m4513r.com/api/packages/Code-Rust/cargo/"
