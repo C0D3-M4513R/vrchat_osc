@@ -12,7 +12,7 @@ use hickory_proto::{
     rr::{Name, RecordType},
     serialize::binary::BinEncodable,
 };
-
+use hickory_proto::op::{MessageType, OpCode};
 use task::server_task;
 use tokio::{
     net::UdpSocket,
@@ -267,7 +267,7 @@ impl Mdns {
 
         log::debug!("Now following service type: {}", service_type_name);
 
-        let mut query_message = Message::new();
+        let mut query_message = Message::new(0, MessageType::Query, OpCode::Query);
         query_message.add_query(Query::query(service_type_name.clone(), RecordType::ANY));
         let bytes = query_message.to_bytes()?;
 

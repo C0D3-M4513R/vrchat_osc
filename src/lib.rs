@@ -396,12 +396,12 @@ impl VRChatOSC {
         Ok(())
     }
 
-    /// Sends an OSC packet to services matching a name pattern.
+    /// Sends an already encoded OSC packet to services matching a name pattern.
     ///
     /// # Arguments
     /// * `packet` - The `OscPacket` to send.
     /// * `to` - A pattern (e.g., "VRChat-Client-*") to match against discovered service names.
-    pub async fn send(&self, packet: OscPacket, to: &str) -> Result<(), Error> {
+    pub async fn send_raw(&self, packet: &[u8], to: &str) -> Result<(), Error> {
         // Find services matching the pattern. The matching logic is within `find_service`.
         // The closure provided to `find_service` determines if a service (by its Name) matches.
         let services = self
@@ -418,7 +418,7 @@ impl VRChatOSC {
         }
 
         // Encode the OSC packet into bytes.
-        let msg_buf = rosc::encoder::encode(&packet)?;
+        let msg_buf = packet;
         // Send the packet to all found services.
         let send_futs = services
             .into_iter()
@@ -431,6 +431,16 @@ impl VRChatOSC {
         Ok(())
     }
 
+    /// Sends an OSC packet to services matching a name pattern.
+    ///
+    /// # Arguments
+    /// * `packet` - The `OscPacket` to send.
+    /// * `to` - A pattern (e.g., "VRChat-Client-*") to match against discovered service names.
+    pub async fn send(&self, packet: OscPacket, to: &str) -> Result<(), Error> {
+        let msg_buf = rosc::encoder::encode(&packet)?;
+        self.send_raw(&msg_buf, to).await
+    }
+
     /// Sends an OSC packet to a specific socket address.
     ///
     /// # Arguments
@@ -440,6 +450,25 @@ impl VRChatOSC {
         let msg_buf = rosc::encoder::encode(&packet)?;
         self.send_socket.send_to(&msg_buf, addr).await?;
         Ok(())
+    }
+
+    /// Sends an already encoded OSC packet to a specific socket address.
+    ///
+    /// # Arguments
+    /// * `packet` - The `OscPacket` to send.
+    /// * `addr` - The `SocketAddr` to send the packet to.
+    pub async fn send_to_addr_raw(&self, packet: &[u8], addr: SocketAddr) -> Result<(), Error> {
+        self.send_socket.send_to(packet, addr).await?;
+        Ok(())
+    }
+    /// Sends an already encoded OSC packet to a specific socket address.
+    ///
+    /// # Arguments
+    /// * `packet` - The `OscPacket` to send.
+    /// * `addr` - The `SocketAddr` to send the packet to.
+    #[inline]
+    pub fn poll_send_to_addr_raw(&self, cx: &mut core::task::Context<'_>, packet: &[u8], addr: SocketAddr) -> core::task::Poll<Result<usize, Error>> {
+        self.send_socket.poll_send_to(cx, packet, addr).map_err(Error::IoError)
     }
 
     /// Retrieves a specific parameter from services matching a name pattern.
