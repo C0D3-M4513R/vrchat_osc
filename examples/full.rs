@@ -1,11 +1,12 @@
+use std::num::{NonZero, NonZeroUsize};
 use std::time::Duration;
 
 use tokio;
 use vrchat_osc::{
     models::OscRootNode,
-    rosc::{OscMessage, OscPacket},
     Error, ServiceType, VRChatOSC,
 };
+use rosc::{OscMessage, OscPacket};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -71,12 +72,43 @@ async fn main() -> Result<(), Error> {
 
     // Register a test service
     let root_node = OscRootNode::new().with_avatar();
-    vrchat_osc
-        .register("test_service", root_node, |packet| {
-            if let OscPacket::Message(msg) = packet {
-                log::info!("Received OSC message: {:?}", msg);
+    struct LoggingOscHandler;
+    impl network_handler::PeriodicParsingCheck for LoggingOscHandler {
+        type CheckOutput = ();
+        fn needs_check(&self) -> bool {
+            false
+        }
+
+        fn check(&mut self) -> Self::CheckOutput {
+            ()
+        }
+    }
+    impl<'a> network_handler::ArbitraryHandler<&'a [&'a OscMessage]> for LoggingOscHandler {
+        type Output = ();
+
+        fn handle(&mut self, message: &'a [&'a OscMessage]) -> Self::Output {
+            for msg in message {
+                log::info!("Received OSC message: {msg:?}");
             }
-        })
+        }
+    }
+    let handler = network_handler::handlers::buffered_raw_packet_handler::BufferedRawPacketHandler::new(
+        network_handler::handlers::osc::raw_packet_handler::RawPacketHandler::new(
+            network_handler::handlers::value_handler::Value(
+                network_handler::handlers::osc::packet_handler::PacketHandler::new(
+                    LoggingOscHandler
+                )
+            )
+        ),
+        NonZeroUsize::new(u16::MAX as usize),
+    );
+    vrchat_osc
+        .register("test_service", root_node,
+              handler,
+              |_, _|async{},
+              |_, _|async{},
+              Duration::from_secs(1)
+        )
         .await?;
     log::info!("Service registered.");
 

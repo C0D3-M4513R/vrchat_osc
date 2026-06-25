@@ -3,7 +3,6 @@ mod mdns;
 mod oscquery;
 
 pub use oscquery::models;
-pub use rosc;
 
 pub use fetch::Error as FetchError;
 pub use mdns::Error as MdnsError;
@@ -263,14 +262,19 @@ impl VRChatOSC {
     /// * `service_name` - The name of the service to register.
     /// * `parameters` - The OSC address space and parameters for this service.
     /// * `handler` - A function called when an OSC packet is received for this service.
-    pub async fn register<F>(
+    pub async fn register<F, CF, HF>(
         &self,
         service_name: &str,
         parameters: OscRootNode,
         handler: F,
+        handler_handler: impl FnMut(<F as network_handler::ArbitraryHandler<&[u8]>>::Output, &mut F) -> HF + Send + 'static,
+        check_handler: impl FnMut(F::CheckOutput, &'_ mut F) -> CF + Send + 'static,
+        check_interval: core::time::Duration,
     ) -> Result<(), Error>
     where
-        F: Fn(OscPacket) + Send + 'static,
+        F: for<'z> network_handler::ArbitraryHandler<&'z [u8]> + network_handler::PeriodicParsingCheck + Send + 'static,
+        HF: core::future::Future<Output = ()> + Send,
+        CF: core::future::Future<Output = ()> + Send,
     {
         // Start OSC server (UDP listener)
         // Bind to an ephemeral port on all interfaces.
@@ -280,16 +284,23 @@ impl VRChatOSC {
         // Spawn a task to handle incoming OSC packets.
         let osc_handle = tokio::spawn(async move {
             let mut buf = [0; OSC_PACKET_BUFFER_SIZE]; // Buffer for receiving OSC packets.
+            let mut handler = handler;
+            let mut handler_handler = handler_handler;
+            let mut check_handler = check_handler;
             loop {
+                let mut interval = tokio::time::interval(check_interval);
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                tokio::select! {
+                    biased;
+                    _ = interval.tick(), if handler.needs_check() => {
+                        check_handler(handler.check(), &mut handler).await;
+                    },
+                    recv = socket.recv_from(&mut buf) => {
                 // Wait to receive data on the socket.
-                match socket.recv_from(&mut buf).await {
-                    Ok((len, addr)) => {
-                        // Decode the received UDP data into an OSC packet.
-                        if let Ok((_, packet)) = rosc::decoder::decode_udp(&buf[..len]) {
-                            handler(packet); // Call the provided handler with the decoded packet.
-                        } else {
-                            log::debug!("Failed to decode OSC packet from {}", addr);
-                        }
+                match recv {
+                    Ok((len, _)) => {
+                        let buf = &buf[..len];
+                        handler_handler(handler.handle(buf), &mut handler).await;
                     }
                     Err(e) => {
                         if e.kind() == std::io::ErrorKind::ConnectionReset
@@ -306,6 +317,9 @@ impl VRChatOSC {
                         }
                         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                         continue;
+                    }
+                }
+
                     }
                 }
             }
