@@ -267,14 +267,14 @@ impl VRChatOSC {
         service_name: &str,
         parameters: OscRootNode,
         handler: F,
-        handler_handler: impl FnMut(<F as network_handler::ArbitraryHandler<&[u8], SocketAddr>>::Output, &mut F, SocketAddr) -> HF + Send + 'static,
+        handler_handler: impl FnMut(<F as network_handler::ArbitraryHandler<&[u8], &'static str>>::Output, &mut F, &'static str) -> HF + Send + 'static,
         check_handler: impl FnMut(F::CheckOutput, &'_ mut F) -> CF + Send + 'static,
         check_interval: core::time::Duration,
     ) -> Result<(), Error>
     where
-        F: for<'z> network_handler::ArbitraryHandler<&'z [u8], SocketAddr> + network_handler::PeriodicParsingCheck + Send + 'static,
-        HF: core::future::Future<Output = ()> + Send,
-        CF: core::future::Future<Output = ()> + Send,
+        F: for<'z> network_handler::ArbitraryHandler<&'z [u8], &'static str> + network_handler::PeriodicParsingCheck + Send + 'static,
+        HF: core::future::Future<Output = ()> + Send + 'static,
+        CF: core::future::Future<Output = ()> + Send + 'static,
     {
         // Start OSC server (UDP listener)
         // Bind to an ephemeral port on all interfaces.
@@ -293,14 +293,14 @@ impl VRChatOSC {
                 tokio::select! {
                     biased;
                     _ = interval.tick(), if handler.needs_check() => {
-                        check_handler(handler.check(), &mut handler).await;
+                        tokio::spawn(check_handler(handler.check(), &mut handler));
                     },
-                    recv = socket.recv_from(&mut buf) => {
+                    recv = socket.recv(&mut buf) => {
                 // Wait to receive data on the socket.
                 match recv {
-                    Ok((len, addr)) => {
+                    Ok(len) => {
                         let buf = &buf[..len];
-                        handler_handler(handler.handle(buf, addr), &mut handler, addr).await;
+                        tokio::spawn(handler_handler(handler.handle(buf, ""), &mut handler, ""));
                     }
                     Err(e) => {
                         if e.kind() == std::io::ErrorKind::ConnectionReset

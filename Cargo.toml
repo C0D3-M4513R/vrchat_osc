@@ -5,7 +5,7 @@ repository = "https://github.com/minetake01/vrchat_osc"
 readme = "README.md"
 keywords = ["vrchat", "osc", "oscquery"]
 categories = ["asynchronous", "network-programming"]
-version = "2.2.1"
+version = "3.0.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 publish = ["forgejo-code-rust"]
@@ -28,7 +28,7 @@ socket2 = "0.6"
 if-addrs = "0.15"
 
 
-network-handler = {version = "0.2.0", registry = "forgejo-code-rust", features = ["tokio"]}
+network-handler = {version = "0.3.0", registry = "forgejo-code-rust"}
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

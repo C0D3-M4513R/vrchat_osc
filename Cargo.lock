@@ -784,16 +784,11 @@ dependencies = [
 
 [[package]]
 name = "network-handler"
-version = "0.2.0"
+version = "0.3.0"
 source = "sparse+https://gitea.c0d3m4513r.com/api/packages/Code-Rust/cargo/"
-checksum = "8f8538d25b6cb7a38cc727e7d58708a1789a3eeae9fd8b973742cb1971bed7f7"
+checksum = "ac97ea173a8338590b71d7d2b4dbb0dc7e548ae8b79de447092628f6b3b4454d"
 dependencies = [
  "log",
- "nom",
- "rosc",
- "sorted-vec",
- "time",
- "tokio",
 ]
 
 [[package]]
@@ -1176,12 +1171,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sorted-vec"
-version = "0.8.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19f58d7b0190c7f12df7e8be6b79767a0836059159811b869d5ab55721fe14d0"
-
-[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1410,7 +1399,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "vrchat_osc"
-version = "2.2.1"
+version = "3.0.0"
 dependencies = [
  "axum",
  "env_logger",
